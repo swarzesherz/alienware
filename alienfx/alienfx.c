@@ -1,6 +1,3 @@
-//#ifndef ALIENFX_H
-//#define ALIENFX_H
-
 //#include "alienfx.h"
 #include <libusb-1.0/libusb.h>
 #include <stdio.h>
@@ -11,150 +8,187 @@
 #include <stdlib.h>
 
 #define VENDOR_ID     0x187c
-#define MY_PRODUCT_ID 0x0528 // Alienware 17R3
+#define MY_PRODUCT_ID 0x0530 // AW1517
+
+#define LFX_MAX_COLOR_VALUE 255 // Maximum color value
+
+// Predifined kinds of actions
+#define LFX_ACTION_MORPH           0x00000001
+#define LFX_ACTION_PULSE           0x00000002
+#define LFX_ACTION_COLOR           0x00000003
 
 #define ALIENFX_USER_CONTROLS 0x01
-#define ALIENFX_SLEEP_LIGHTS 0x02
-#define ALIENFX_ALL_OFF 0x03
-#define ALIENFX_ALL_ON 0x04
+#define ALIENFX_SLEEP_LIGHTS  0x02
+#define ALIENFX_ALL_OFF       0x03
+#define ALIENFX_ALL_ON        0x04
 
-#define ALIENFX_MORPH 0x01
-#define ALIENFX_BLINK 0x02
-#define ALIENFX_STAY 0x03
 #define ALIENFX_BATTERY_STATE 0x0F
 
-#define ALIENFX_NUMPAD      0x000001
-#define ALIENFX_KEYB_RIGHT  0x000002
-#define ALIENFX_KEYB_CENTER 0x000004
-#define ALIENFX_KEYB_LEFT   0x000008
-#define ALIENFX_KEYB_MLEFT  0x002000
-#define ALIENFX_LEFTPIPE    0x004800
-#define ALIENFX_RIGHTPIPE   0x0f5000
-#define ALIENFX_STATUS      0x000080 // Caps, Num
-#define ALIENFX_HDD         0x000200
-#define ALIENFX_LOGO        0x000040
-#define ALIENFX_LID         0x000020
+
+//Todo
 #define ALIENFX_PWR_BLINK   0x000510
-#define ALIENFX_ALL         0x0fbfff // All of the above
-// TODO power button and touchpad
+
+// Near Z-plane light definitions
+#define LFX_FRONT_LOWER_LEFT     0x00000001
+#define LFX_FRONT_LOWER_CENTER   0x00000002
+#define LFX_FRONT_LOWER_RIGHT    0x00000004
+
+#define LFX_FRONT_MIDDLE_LEFT    0x00000008
+#define LFX_FRONT_MIDDLE_CENTER  0x00000010
+#define LFX_FRONT_MIDDLE_RIGHT   0x00000020
+
+#define LFX_FRONT_UPPER_LEFT     0x00000040
+#define LFX_FRONT_UPPER_CENTER   0x00000080
+#define LFX_FRONT_UPPER_RIGHT    0x00000100
+
+// Mid Z-plane light definitions
+#define LFX_MIDDLE_LOWER_LEFT    0x00000200
+#define LFX_MIDDLE_LOWER_CENTER  0x00000400
+#define LFX_MIDDLE_LOWER_RIGHT   0x00000800
+
+#define LFX_MIDDLE_MIDDLE_LEFT   0x00001000
+#define LFX_MIDDLE_MIDDLE_CENTER 0x00002000
+#define LFX_MIDDLE_MIDDLE_RIGHT  0x00004000
+
+#define LFX_MIDDLE_UPPER_LEFT    0x00008000
+#define LFX_MIDDLE_UPPER_CENTER  0x00010000
+#define LFX_MIDDLE_UPPER_RIGHT   0x00020000
+
+// Far Z-plane light definitions
+#define LFX_REAR_LOWER_LEFT      0x00040000
+#define LFX_REAR_LOWER_CENTER    0x00080000
+#define LFX_REAR_LOWER_RIGHT     0x00100000
+
+#define LFX_REAR_MIDDLE_LEFT     0x00200000
+#define LFX_REAR_MIDDLE_CENTER   0x00400000
+#define LFX_REAR_MIDDLE_RIGHT    0x00800000
+
+#define LFX_REAR_UPPER_LEFT      0x01000000
+#define LFX_REAR_UPPER_CENTER    0x02000000
+#define LFX_REAR_UPPER_RIGHT     0x04000000
+
+#define LFX_ALL           0x003cef
+
 
 #define ALIENFX_DEVICE_RESET 0x06
 #define ALIENFX_READY 0x10
 #define ALIENFX_BUSY 0x11
 #define ALIENFX_UNKOWN_COMMAND 0x12
 
-#define SEND_REQUEST_TYPE 0x21
-#define SEND_REQUEST      0x09
-#define SEND_VALUE        0x202
-#define SEND_INDEX        0x00
-#define SEND_DATA_SIZE    9
+#define OUT_BM_REQUEST_TYPE 0x21
+#define OUT_B_REQUEST       0x09
+#define OUT_W_VALUE         0x202
+#define OUT_W_INDEX         0x00
 
-#define READ_REQUEST_TYPE 0xa1
-#define READ_REQUEST      0x01
-#define READ_VALUE        0x101
-#define READ_INDEX        0x0
-#define READ_DATA_SIZE    9
+#define IN_BM_REQUEST_TYPE  0xa1
+#define IN_B_REQUEST        0x01
+#define IN_W_VALUE          0x101
+#define IN_W_INDEX          0x0000
+
+#define DATA_SIZE           12
 
 #define START_BYTE        0x02
 #define FILL_BYTE         0x00
 
-void usbTestCode(unsigned int region, unsigned int color);
+#define rgbToCodedColor(r, g, b) (r & 0xFF) << 16 | (g & 0xFF) << 8 | (b & 0xFF)
+
+void sendColor(unsigned int region, unsigned int color);
 int is_usbdevblock( libusb_device *dev );
-unsigned int rgbToCodedColor(int r, int g, int b);
 unsigned int region(int index);
 void printRegionCodes(void);
 void printHelp(char *name);
+int verbose = 1;
 
 int  WriteDevice(libusb_device_handle *usb_handle,
                  unsigned char *data,
                  int data_bytes){
-    unsigned char buf[SEND_DATA_SIZE];
-    memset(&buf[0], FILL_BYTE, SEND_DATA_SIZE);
+    unsigned char buf[DATA_SIZE];
+    memset(&buf[0], FILL_BYTE, DATA_SIZE);
     memcpy(&buf[0], data, data_bytes);
     int written_bytes = libusb_control_transfer(usb_handle,
-                                                SEND_REQUEST_TYPE,
-                                                SEND_REQUEST,
-                                                SEND_VALUE,
-                                                SEND_INDEX,
-                                                buf, SEND_DATA_SIZE, 0);
-    if(written_bytes != SEND_DATA_SIZE)
+                                                OUT_BM_REQUEST_TYPE,
+                                                OUT_B_REQUEST,
+                                                OUT_W_VALUE,
+                                                IN_W_INDEX,
+                                                buf, DATA_SIZE, 0);
+    if(written_bytes != DATA_SIZE)
         fprintf(stderr,
                 "WriteDevice: wrote %d bytes instead of expected %d %s\n",
                 written_bytes, data_bytes, strerror(errno));
 
-    printf("Write: %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x  sent:%i\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], written_bytes);
+    printf("Write: %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x  sent:%i\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11], written_bytes);
 
-    return (written_bytes == SEND_DATA_SIZE);
+    return (written_bytes == DATA_SIZE);
 }
 
 void SetColor( libusb_device_handle *usb_handle, unsigned char pAction, unsigned char pSetId, unsigned int pLeds, unsigned int pColor){
   size_t BytesWritten;
-  unsigned char Buffer[] = { 0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
-  printf("%.4x\n", pLeds );
+  unsigned char Buffer[] = { 0x02 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
 
   Buffer[1] = pAction;
   Buffer[2] = pSetId;
-  Buffer[3] = 0x00;//(pLeds & 0xFF0000) >> 16;
-  Buffer[4] = (pLeds & 0xFF00) >> 8   ;//  0x4B
-  Buffer[5] = (pLeds & 0x00FF);//        0xEF
-  Buffer[6] = (pColor & 0xFF00) >> 8;
-  Buffer[7] = (pColor & 0x00FF);
-  Buffer[8] = 0x00;//(pColor & 0x0000FF);
+  Buffer[3] = (pLeds & 0xFF0000) >> 16;
+  Buffer[4] = (pLeds & 0xFF00) >> 8;
+  Buffer[5] = (pLeds & 0xFF);
+  Buffer[6] = (pColor & 0xFF0000) >> 16;
+  Buffer[7] = (pColor & 0xFF00) >> 8;
+  Buffer[8] = (pColor & 0xFF);
 
-  WriteDevice(usb_handle, Buffer, 9);
+  BytesWritten = WriteDevice(usb_handle, Buffer, DATA_SIZE);
 }
 
 void SetSpeed(libusb_device_handle *usb_handle){
-  unsigned char Buffer[] = { 0x02 ,0x0E ,0x00 ,0xC8 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
-  WriteDevice(usb_handle, Buffer, 9);
+  unsigned char Buffer[] = { 0x02 ,0x0E ,0x00 ,0xC8 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00, 0x00 ,0x00 ,0x00 };
+  WriteDevice(usb_handle, Buffer, DATA_SIZE);
 }
 
-void Reset(libusb_device_handle *usb_handle, unsigned char pOptions){
-  unsigned char Buffer[] = { 0x02 ,0x07 ,0x04 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
-  WriteDevice(usb_handle, Buffer, 9);
+void Reset(libusb_device_handle *usb_handle){
+  unsigned char Buffer[] = { 0x02 ,0x07 ,0x04 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00, 0x00 ,0x00 ,0x00 };
+  WriteDevice(usb_handle, Buffer, DATA_SIZE);
 }
 
 void GetStatus(libusb_device_handle *usb_handle){
-  unsigned char Buffer[] = { 0x02 ,0x06 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
-  WriteDevice(usb_handle, Buffer, 9);
+  unsigned char Buffer[] = { 0x02 ,0x06 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00, 0x00 ,0x00 ,0x00 };
+  WriteDevice(usb_handle, Buffer, DATA_SIZE);
 }
+
 
 // return number of bytes read
 int ReadDevice(libusb_device_handle *usb_device,
                unsigned char *data, // point to buffer to receive data
                int data_bytes)
 {
-    unsigned char buf[READ_DATA_SIZE];
-    memset(&buf[0], FILL_BYTE, READ_DATA_SIZE);
+    unsigned char buf[DATA_SIZE];
+    memset(&buf[0], FILL_BYTE, DATA_SIZE);
     int read_bytes = 0 , i = 0;
     do {
          read_bytes = libusb_control_transfer(usb_device,
-                                             READ_REQUEST_TYPE, READ_REQUEST,
-                                             READ_VALUE, READ_INDEX,
+                                             IN_BM_REQUEST_TYPE, IN_B_REQUEST,
+                                             IN_W_VALUE, IN_W_INDEX,
                                              &buf[0], sizeof buf, data_bytes);
          i++;
     } while ((buf[0]!= ALIENFX_READY) && (i < 10));
     memcpy(data, &buf[0], read_bytes);
-    printf("Read:  %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
+    printf("Read:  %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
     return read_bytes;
 }
 
 void EndLoopBlock(libusb_device_handle *usb_handle){
   size_t BytesWritten;
-  unsigned char Buffer[] = { 0x02 ,0x04 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
-  WriteDevice(usb_handle, Buffer, 9);
+  unsigned char Buffer[] = { 0x02 ,0x04 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
+  BytesWritten = WriteDevice(usb_handle, Buffer, DATA_SIZE);
 }
 
 void EndTransmitionAndExecute(libusb_device_handle *usb_handle){
   size_t BytesWritten;
-  unsigned char Buffer[] = { 0x02 ,0x05 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
-  WriteDevice(usb_handle, Buffer, 9);
+  unsigned char Buffer[] = { 0x02 ,0x05 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 ,0x00 };
+  BytesWritten = WriteDevice(usb_handle, Buffer, DATA_SIZE);
 }
 
 int is_usbdevblock( libusb_device *dev )
 {
         struct libusb_device_descriptor desc;
-        int r = libusb_get_device_descriptor( dev, &desc );
+        libusb_get_device_descriptor( dev, &desc );
 
         if( desc.idVendor == VENDOR_ID && desc.idProduct == MY_PRODUCT_ID ){
                 return 1;
@@ -165,7 +199,7 @@ int is_usbdevblock( libusb_device *dev )
         return 0;
 }
 
-void usbTestCode(unsigned int region, unsigned int color){
+void sendColor(unsigned int region, unsigned int color){
 
     // discover devices
     libusb_device **list;
@@ -218,19 +252,19 @@ void usbTestCode(unsigned int region, unsigned int color){
                     return;
             }
 
-            unsigned char data_input[READ_DATA_SIZE];
+            unsigned char data_input[DATA_SIZE];
 
-            //ReadDevice(handle, &data_input[0], READ_DATA_SIZE );
-            Reset(handle, ALIENFX_ALL_ON);
+            //ReadDevice(handle, &data_input[0], DATA_SIZE );
+            Reset(handle);
             GetStatus(handle);
 
-            ReadDevice(handle, &data_input[0], READ_DATA_SIZE );
+            ReadDevice(handle, &data_input[0], DATA_SIZE );
             SetSpeed(handle);
-            SetColor(handle, ALIENFX_STAY, 1 ,region,color);
+            SetColor(handle, LFX_ACTION_COLOR, 1 ,region,color);
             EndLoopBlock(handle);
             EndTransmitionAndExecute(handle);
             GetStatus(handle);
-            //ReadDevice(handle, &data_input[0], READ_DATA_SIZE );
+            //ReadDevice(handle, &data_input[0], DATA_SIZE );
 
 
 
@@ -247,69 +281,56 @@ void usbTestCode(unsigned int region, unsigned int color){
     return;
 }
 
-//#endif // ALIENFX_H
-
-unsigned int rgbToCodedColor(int r, int g, int b)
-{
-  // r, g, b should be in the range 0-15
-  if (r < 0 || r > 15 ||
-      g < 0 || g > 15 ||
-      b < 0 || b > 15 )
-  {
-    fprintf(stderr, "rgb values should be in the range 0-15\n");
-    return 0;
-  }
-
-  return (r * 16 + g) * 256 + b * 16;
-}
-
 unsigned int region(int index)
 {
   switch (index)
   {
     case 0: //All
-      return ALIENFX_ALL;
+      return LFX_ALL;
       break;
     case 1: //Numpad
-      return ALIENFX_NUMPAD;
+      return LFX_FRONT_LOWER_LEFT;
       break;
     case 2: //Keyboard Right
-      return ALIENFX_KEYB_RIGHT;
+      return LFX_FRONT_LOWER_CENTER;
       break;
     case 3: //Keyboard Center
-      return ALIENFX_KEYB_CENTER;
+      return LFX_FRONT_LOWER_RIGHT;
       break;
     case 4: //Keybaord Left
-      return ALIENFX_KEYB_LEFT;
+      return LFX_FRONT_MIDDLE_LEFT;
       break;
-    case 5: //Left Macro Keys
-      return ALIENFX_KEYB_MLEFT;
+    case 5: //Macros
+      return LFX_MIDDLE_MIDDLE_RIGHT;
       break;
-    case 6: //Left Pipe
-      return ALIENFX_LEFTPIPE;
+    case 6: //Touchpad
+      return LFX_FRONT_UPPER_CENTER;
       break;
-    case 7: //Right Pipe
-      return ALIENFX_RIGHTPIPE;
+    case 7: //Logo
+      return LFX_FRONT_UPPER_LEFT;
       break;
-    case 8: //Status (Caps/Num)
-      return ALIENFX_STATUS;
+    case 8: //Left Keyboard Pipe
+      return LFX_MIDDLE_LOWER_CENTER;
       break;
-    case 9: //HDD
-      return ALIENFX_HDD;
+    case 9: //Right Keyboard Pipe
+      return LFX_MIDDLE_LOWER_RIGHT;
       break;
-    case 10: //Logo Text
-      return ALIENFX_LOGO;
+    case 10: //Left Lid Pipe
+      return LFX_MIDDLE_MIDDLE_LEFT;
       break;
-    case 11: //Lid
-      return ALIENFX_LID;
+    case 11: //Right Lid Pipe
+      return LFX_MIDDLE_MIDDLE_CENTER;
       break;
-    case 12: //Blink Power
+    case 12: //Lid
+      return LFX_FRONT_MIDDLE_RIGHT;
+      break;
+    case 13:
       return ALIENFX_PWR_BLINK;
       break;
     default:
       fprintf(stderr, "Unknown region, assuming All.\n");
       printRegionCodes();
-      return ALIENFX_ALL;
+      return LFX_ALL;
       break;
   }
 }
@@ -323,13 +344,14 @@ void printRegionCodes(void)
          " 3 - Keyboard Center\n"
          " 4 - Keyboard Left\n"
          " 5 - Left Macro Keys\n"
-         " 6 - Left Pipe\n"
-         " 7 - Right Pipe\n"
-         " 8 - Status (Caps/Num)\n"
-         " 9 - HDD Light\n"
-         "10 - Alienware Logo\n"
-         "11 - Lid\n"
-         "12 - Power Button Blink\n");
+         " 6 - Touchpad\n"
+         " 7 - Logo\n"
+         " 8 - Left Keyboard Pipe\n"
+         " 9 - Right Keyboard Pipe\n"
+         "10 - Left Lid Pipe\n"
+         "12 - Right Lid Pipe\n"
+         "12 - Lid\n"
+         "13 - Power Button Blink\n");
 }
 
 void printHelp(char *name)
@@ -407,8 +429,7 @@ int main(int argc, char **argv)
 
   // Execute
   printf("execute: region = 0x%x, colour = 0x%x\n", region(regionIndex), rgbToCodedColor(r, g, b));
-  usbTestCode(region(regionIndex),
-              rgbToCodedColor(r, g, b));
+  sendColor(region(regionIndex), rgbToCodedColor(r, g, b));
 
   return 0;
 }
